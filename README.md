@@ -637,7 +637,7 @@ Copyright © 2025 VinuChain Community
 
 ## Acknowledgments
 
-**Created by:** @ElemontCapital
+**Created by:** [@ElemontCapital](https://github.com/ElemontCapital)
 
 **Standards Compliance:**
 - [EIP-55](https://eips.ethereum.org/EIPS/eip-55) - Ethereum address checksums
