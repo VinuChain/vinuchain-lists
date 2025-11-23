@@ -187,6 +187,12 @@ To add a new contract to an existing project (e.g., `vinuswap`):
   "twitter": "https://twitter.com/handle",
   "telegram": "https://t.me/channel",
   "discord": "https://discord.gg/invite",
+  "medium": "https://medium.com/publication",
+  "linkedin": "https://linkedin.com/company/name",
+  "instagram": "https://instagram.com/username",
+  "facebook": "https://facebook.com/pagename",
+  "reddit": "https://reddit.com/r/community",
+  "youtube": "https://www.youtube.com/c/channelname",
   "coingecko": "https://www.coingecko.com/...",
   "coinmarketcap": "https://coinmarketcap.com/...",
   "redFlags": [                   // Security warnings (structured)
