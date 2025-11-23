@@ -96,6 +96,42 @@
       "pattern": "^https://coinmarketcap\\.com/[^\\s]+$",
       "maxLength": 500
     },
+    "medium": {
+      "type": "string",
+      "description": "Medium blog/publication HTTPS URL",
+      "pattern": "^https://medium\\.com/[^\\s]+$",
+      "maxLength": 500
+    },
+    "linkedin": {
+      "type": "string",
+      "description": "LinkedIn company/profile HTTPS URL",
+      "pattern": "^https://(www\\.)?linkedin\\.com/(company|in)/[a-zA-Z0-9_-]+/?$",
+      "maxLength": 500
+    },
+    "instagram": {
+      "type": "string",
+      "description": "Instagram profile HTTPS URL",
+      "pattern": "^https://(www\\.)?instagram\\.com/[a-zA-Z0-9_.]+/?$",
+      "maxLength": 500
+    },
+    "facebook": {
+      "type": "string",
+      "description": "Facebook page HTTPS URL",
+      "pattern": "^https://(www\\.)?facebook\\.com/[a-zA-Z0-9.]+/?$",
+      "maxLength": 500
+    },
+    "reddit": {
+      "type": "string",
+      "description": "Reddit community HTTPS URL",
+      "pattern": "^https://(www\\.)?reddit\\.com/r/[a-zA-Z0-9_]+/?$",
+      "maxLength": 500
+    },
+    "youtube": {
+      "type": "string",
+      "description": "YouTube channel HTTPS URL",
+      "pattern": "^https://(www\\.)?youtube\\.com/(c/|channel/|@)?[a-zA-Z0-9_-]+/?$",
+      "maxLength": 500
+    },
     "redFlags": {
       "type": "array",
       "description": "Security warnings or concerns with evidence (use sparingly)",
