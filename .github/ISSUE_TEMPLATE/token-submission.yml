@@ -1,0 +1,177 @@
+name: Token Submission
+description: Submit a new token to VinuChain Lists
+title: "[Token] "
+labels: ["submission", "token"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a Token
+
+        Use this form to submit a new token to VinuChain Lists.
+
+        **Please ensure:**
+        - You are authorized to submit this token information
+        - The token is deployed on VinuChain
+        - The contract address is EIP-55 checksummed
+        - All information provided is accurate
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Token Information
+
+  - type: input
+    id: symbol
+    attributes:
+      label: Token Symbol
+      description: Token ticker/symbol (uppercase, 1-20 characters)
+      placeholder: "MYTOKEN"
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Token Name
+      description: Full token name (1-100 characters)
+      placeholder: "My Token"
+    validations:
+      required: true
+
+  - type: input
+    id: address
+    attributes:
+      label: Contract Address
+      description: EIP-55 checksummed token contract address
+      placeholder: "0x..."
+    validations:
+      required: true
+
+  - type: input
+    id: decimals
+    attributes:
+      label: Decimals
+      description: Number of decimal places (0-18)
+      placeholder: "18"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Optional Information
+
+  - type: input
+    id: logo
+    attributes:
+      label: Logo URI
+      description: HTTPS URL to token logo (recommended 200x200px PNG with transparency)
+      placeholder: "https://example.com/logo.png"
+    validations:
+      required: false
+
+  - type: input
+    id: website
+    attributes:
+      label: Website
+      description: Official project website
+      placeholder: "https://example.com"
+    validations:
+      required: false
+
+  - type: input
+    id: support
+    attributes:
+      label: Support Email
+      description: Support/contact email address
+      placeholder: "support@example.com"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Social Media & Listings
+
+  - type: input
+    id: github
+    attributes:
+      label: GitHub
+      description: GitHub repository URL
+      placeholder: "https://github.com/example-project"
+    validations:
+      required: false
+
+  - type: input
+    id: twitter
+    attributes:
+      label: Twitter/X
+      description: Twitter/X profile URL
+      placeholder: "https://twitter.com/exampletoken"
+    validations:
+      required: false
+
+  - type: input
+    id: telegram
+    attributes:
+      label: Telegram
+      description: Telegram group URL
+      placeholder: "https://t.me/exampletoken"
+    validations:
+      required: false
+
+  - type: input
+    id: discord
+    attributes:
+      label: Discord
+      description: Discord server URL
+      placeholder: "https://discord.gg/example"
+    validations:
+      required: false
+
+  - type: input
+    id: coingecko
+    attributes:
+      label: CoinGecko
+      description: CoinGecko listing URL
+      placeholder: "https://www.coingecko.com/en/coins/example"
+    validations:
+      required: false
+
+  - type: input
+    id: coinmarketcap
+    attributes:
+      label: CoinMarketCap
+      description: CoinMarketCap listing URL
+      placeholder: "https://coinmarketcap.com/currencies/example/"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Verification
+
+        Please confirm your token meets these requirements:
+        - Deployed on VinuChain (Chain ID: 207)
+        - Contract is verified on VinuChain block explorer
+        - Address is properly EIP-55 checksummed
+        - You have authority to submit this information
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      description: Please confirm the following
+      options:
+        - label: I am authorized to submit this token information
+          required: true
+        - label: The token is deployed on VinuChain
+          required: true
+        - label: The contract is verified on the VinuChain block explorer
+          required: true
+        - label: The contract address is EIP-55 checksummed
+          required: true
+        - label: All information provided is accurate and up-to-date
+          required: true

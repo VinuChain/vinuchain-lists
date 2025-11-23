@@ -1,0 +1,55 @@
+{
+  "name": "vinuchain-lists",
+  "version": "1.0.0",
+  "description": "VinuChain Lists - Comprehensive registry of tokens and smart contracts on VinuChain",
+  "main": "scripts/validate.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "files": [
+    "tokens",
+    "contracts",
+    "schemas",
+    "scripts"
+  ],
+  "scripts": {
+    "validate": "node scripts/validate.js",
+    "test": "mocha tests/**/*.test.js",
+    "test:unit": "mocha tests/unit/**/*.test.js",
+    "test:integration": "mocha tests/integration/**/*.test.js",
+    "test:security": "mocha tests/security/**/*.test.js",
+    "test:all": "npm run validate && npm test",
+    "test:verbose": "mocha tests/**/*.test.js --reporter spec",
+    "test:watch": "mocha tests/**/*.test.js --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VinuChain/vinuchain-lists.git"
+  },
+  "keywords": [
+    "vinuchain",
+    "tokens",
+    "contracts",
+    "erc20",
+    "blockchain",
+    "registry",
+    "smart-contracts",
+    "abi",
+    "solidity",
+    "defi"
+  ],
+  "author": "VinuChain Community",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/VinuChain/vinuchain-lists/issues"
+  },
+  "homepage": "https://github.com/VinuChain/vinuchain-lists#readme",
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "chai": "^4.5.0",
+    "ethers": "^6.13.0",
+    "mocha": "^11.7.5"
+  }
+}

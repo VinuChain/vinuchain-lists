@@ -1,0 +1,51 @@
+{
+  "name": "VinuSwap",
+  "website": "https://vinuswap.io",
+  "description": "Decentralized exchange protocol on VinuChain",
+  "contact": "contact@vinuswap.io",
+  "security": "security@vinuswap.io",
+  "contracts": [
+    {
+      "name": "Controller",
+      "address": "0x47fF80713b1d66DdA47237AB374F3080E2075528",
+      "type": "controller",
+      "description": "Main controller contract"
+    },
+    {
+      "name": "Factory",
+      "address": "0xd74dEe1C78D5C58FbdDe619b707fcFbAE50c3EEe",
+      "type": "factory",
+      "description": "Creates trading pairs"
+    },
+    {
+      "name": "Router",
+      "address": "0x48f450475a8b501A7480C1Fd02935a7327F713Ad",
+      "type": "router",
+      "description": "Routes trades through liquidity pools"
+    },
+    {
+      "name": "PositionDescriptor",
+      "address": "0xCA04dFDEE5778f6c23a7BdBa46A8D95F5094e4B5",
+      "type": "helper",
+      "description": "Describes NFT positions"
+    },
+    {
+      "name": "PositionManager",
+      "address": "0xF699ec0764741f66F81068665eFFAeefA3c6037a",
+      "type": "manager",
+      "description": "Manages liquidity positions"
+    },
+    {
+      "name": "Quoter",
+      "address": "0xEed635Fa2343355d9bA726C379F2B5dEa70fE65C",
+      "type": "quoter",
+      "description": "Provides price quotes"
+    }
+  ],
+  "social": {
+    "github": "https://github.com/vinuswap",
+    "twitter": "https://twitter.com/vinuswap",
+    "telegram": "https://t.me/vinuswap",
+    "discord": "https://discord.gg/vinuswap"
+  }
+}

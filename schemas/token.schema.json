@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/VinuChain/vinuchain-lists/schemas/token.schema.json",
+  "title": "Token",
+  "description": "Schema for VinuChain token entries",
+  "type": "object",
+  "required": [
+    "symbol",
+    "name",
+    "address",
+    "decimals"
+  ],
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "description": "Token symbol/ticker (uppercase, 1-20 characters)",
+      "minLength": 1,
+      "maxLength": 20,
+      "pattern": "^[A-Z0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full token name",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "address": {
+      "type": "string",
+      "description": "EIP-55 checksummed token contract address",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "decimals": {
+      "type": "integer",
+      "description": "Number of decimal places (0-77, values above 18 are unusual)",
+      "minimum": 0,
+      "maximum": 77
+    },
+    "project": {
+      "type": "string",
+      "description": "Reference to contracts/{project-slug}/ if this token belongs to a project",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "logoURI": {
+      "type": "string",
+      "description": "HTTPS URL to token logo image (recommended 200x200px PNG with transparency)",
+      "pattern": "^https://[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(/[^\\s]*)?$",
+      "maxLength": 500
+    },
+    "website": {
+      "type": "string",
+      "description": "Official project website HTTPS URL",
+      "pattern": "^https://[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(/[^\\s]*)?$",
+      "maxLength": 500
+    },
+    "support": {
+      "type": "string",
+      "description": "Support/contact email address",
+      "format": "email",
+      "maxLength": 320
+    },
+    "github": {
+      "type": "string",
+      "description": "GitHub organization or repository HTTPS URL",
+      "pattern": "^https://github\\.com/[a-zA-Z0-9_-]+(/[a-zA-Z0-9_.-]+)?/?$",
+      "maxLength": 500
+    },
+    "twitter": {
+      "type": "string",
+      "description": "Twitter/X profile HTTPS URL",
+      "pattern": "^https://(twitter\\.com|x\\.com)/[a-zA-Z0-9_]+$",
+      "maxLength": 500
+    },
+    "telegram": {
+      "type": "string",
+      "description": "Telegram channel or group URL",
+      "pattern": "^https://t\\.me/[a-zA-Z0-9_]+$",
+      "maxLength": 500
+    },
+    "discord": {
+      "type": "string",
+      "description": "Discord server invite HTTPS URL",
+      "pattern": "^https://(discord\\.gg|discord\\.com/invite)/[a-zA-Z0-9]+$",
+      "maxLength": 500
+    },
+    "coingecko": {
+      "type": "string",
+      "description": "CoinGecko listing HTTPS URL",
+      "pattern": "^https://www\\.coingecko\\.com/[^\\s]+$",
+      "maxLength": 500
+    },
+    "coinmarketcap": {
+      "type": "string",
+      "description": "CoinMarketCap listing HTTPS URL",
+      "pattern": "^https://coinmarketcap\\.com/[^\\s]+$",
+      "maxLength": 500
+    },
+    "redFlags": {
+      "type": "array",
+      "description": "Security warnings or concerns with evidence (use sparingly)",
+      "items": {
+        "type": "object",
+        "required": ["severity", "description"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "description": "Severity level of the security concern",
+            "enum": ["critical", "high", "medium", "low", "info"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Clear description of the security concern",
+            "minLength": 10,
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9\\s,.!?()\\-:;'\"]+$"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "HTTPS URL to evidence (transaction hash on explorer, audit report, etc.)",
+            "pattern": "^https://[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(/[^\\s]*)?$",
+            "maxLength": 500
+          },
+          "reportedDate": {
+            "type": "string",
+            "description": "Date when this issue was reported (ISO 8601 format)",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    }
+  },
+  "additionalProperties": false
+}

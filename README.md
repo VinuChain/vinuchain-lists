@@ -1,0 +1,651 @@
+# VinuChain Lists
+
+**Enterprise-grade registry of verified tokens and smart contracts on VinuChain**
+
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+---
+
+## Quick Navigation
+
+**Getting Started:**
+[Quick Start](#quick-start) • [Installation](#installation) • [Validation Commands](#validation-commands)
+
+**Submit:**
+[Submit Token](#token-submission-guide) • [Submit Contract](#contract-project-submission) • [Submission Guidelines](#submission-guidelines)
+
+**Documentation:**
+[Validation Rules](#validation-rules) • [Architecture](#architecture)
+
+**Usage:**
+[Using the Registry](#using-the-registry) • [Advanced Usage](#advanced-usage) • [Development](#development)
+
+---
+
+## Overview
+
+VinuChain Lists is a **community-maintained registry** providing:
+
+- **Token Registry**: Verified ERC-20 tokens with metadata for wallet and DEX integration
+- **Contract Registry**: Smart contract projects with source code, ABIs, and comprehensive validation
+
+---
+
+## Network Information
+
+| Property | Value |
+|----------|-------|
+| **Chain Name** | VinuChain |
+| **Chain ID** | 207 |
+| **RPC Endpoint** | https://rpc.vinuchain.org/ |
+| **Block Explorer** | [VinuExplorer](https://vinuexplorer.org/) |
+| **Native Token** | VC |
+
+---
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/VinuChain/vinuchain-lists.git
+cd vinuchain-lists
+
+# Install dependencies
+npm install
+
+# Validate the repository
+npm run validate
+
+# Run test suite
+npm test
+```
+
+### Validation Commands
+
+```bash
+npm run validate           # Validate tokens and contracts
+npm test                   # Run all 181 tests
+npm run test:unit          # Run unit tests only
+npm run test:security      # Run security tests only
+npm run test:integration   # Run integration tests only
+npm run test:all           # Run validation + all tests
+```
+
+---
+
+## Repository Structure
+
+```
+vinuchain-lists/
+├── tokens/                     # Token registry (7 tokens)
+│   └── {address}/              # EIP-55 checksummed address
+│       └── {address}.json      # Token metadata
+│
+├── contracts/                  # Contract project registry (1 project)
+│   └── {project-slug}/         # Project directory
+│       ├── info.json           # Project metadata
+│       ├── {Contract}.sol      # Solidity source code
+│       └── {Contract}_abi.json # Contract ABI
+│
+├── schemas/                    # JSON Schema definitions
+│   ├── token.schema.json       # Token validation schema
+│   └── contract.schema.json    # Contract validation schema
+│
+├── scripts/                    # Validation system
+│   ├── validate.js             # Main validation script
+│   ├── utils/                  # Utility modules
+│   │   ├── constants.js        # Configuration
+│   │   ├── safe-json.js        # Secure JSON parsing
+│   │   ├── address-validator.js# EIP-55 validation
+│   │   ├── url-validator.js    # SSRF protection
+│   │   ├── file-utils.js       # Safe file operations
+│   │   └── logger.js           # Structured logging
+│   └── validators/             # Specialized validators
+│       ├── email-validator.js  # Email domain validation
+│       ├── abi-validator.js    # ABI structure validation
+│       └── solidity-validator.js# Solidity security patterns
+│
+└── tests/                      # Comprehensive test suite (181 tests)
+    ├── unit/                   # Unit tests (103 tests)
+    ├── integration/            # Integration tests (6 tests)
+    └── security/               # Security tests (72 tests)
+```
+---
+
+## Contract Project Submission
+
+### Project Structure
+
+Each contract project requires:
+
+```
+contracts/{project-slug}/
+├── info.json                    # Project metadata
+├── {ContractName}.sol           # Solidity source (for each contract)
+└── {ContractName}_abi.json      # ABI JSON (for each contract)
+```
+
+### Adding Contracts to Existing Projects
+
+To add a new contract to an existing project (e.g., `vinuswap`):
+
+1. **Update `info.json`** - Add new contract to the `contracts` array:
+   ```json
+   {
+     "contracts": [
+       // ... existing contracts ...
+       {
+         "name": "NewContract",
+         "address": "0x...",
+         "type": "helper",
+         "description": "New contract description"
+       }
+     ]
+   }
+   ```
+
+2. **Add Solidity source:** `contracts/{project}/NewContract.sol`
+
+3. **Add ABI:** `contracts/{project}/NewContract_abi.json`
+
+4. **Validate:** `npm run validate`
+
+5. **Submit PR** with all three changes
+
+**Requirements:**
+- Contract name must be unique within the project (duplicate detection active)
+- Must follow PascalCase naming convention
+- Address must not duplicate any existing address in the registry
+- All validation rules apply
+
+---
+
+## Token Submission Guide
+
+### Required Fields
+
+```json
+{
+  "symbol": "TOKEN",              // Uppercase, 1-20 chars
+  "name": "Token Name",           // 1-100 chars
+  "address": "0x...",             // EIP-55 checksummed
+  "decimals": 18                  // 0-77 (values >18 trigger warning)
+}
+```
+
+### Optional Fields
+
+```json
+{
+  "project": "project-slug",      // Reference to contracts/{project-slug}/
+  "logoURI": "https://...",       // HTTPS URL to logo (200x200px PNG recommended)
+  "website": "https://...",       // Official website
+  "support": "email@domain.com",  // Support email (no disposable domains)
+  "github": "https://github.com/org/repo",
+  "twitter": "https://twitter.com/handle",
+  "telegram": "https://t.me/channel",
+  "discord": "https://discord.gg/invite",
+  "coingecko": "https://www.coingecko.com/...",
+  "coinmarketcap": "https://coinmarketcap.com/...",
+  "redFlags": [                   // Security warnings (structured)
+    {
+      "severity": "high",
+      "description": "Clear description of concern",
+      "evidence": "https://link-to-proof",
+      "reportedDate": "2025-01-15"
+    }
+  ]
+}
+```
+
+### Submission Process
+
+#### Option 1: GitHub Issue (Easiest)
+1. Click **[New Issue](../../issues/new/choose)**
+2. Select **"Token Submission"** template
+3. Fill out the form with all required information
+4. Submit for automated validation and review
+
+#### Option 2: Pull Request (Advanced)
+1. Fork this repository
+2. Create directory: `tokens/{address}/`
+3. Create file: `tokens/{address}/{address}.json`
+4. Run validation: `npm run validate`
+5. Create pull request with your changes
+
+**Important:** Address must be EIP-55 checksummed. Use [EIP-55 Converter](https://ethsum.netlify.app/) if needed.
+
+---
+
+## Contract Project Submission
+
+### Project Structure
+
+Each contract project requires:
+
+```
+contracts/{project-slug}/
+├── info.json                    # Project metadata
+├── {ContractName}.sol           # Solidity source (for each contract)
+└── {ContractName}_abi.json      # ABI JSON (for each contract)
+```
+
+### info.json Format
+
+```json
+{
+  "name": "Project Name",
+  "website": "https://project.io",
+  "description": "Brief project description",
+  "contact": "team@project.io",
+  "security": "security@project.io",
+  "contracts": [
+    {
+      "name": "Factory",                                    // PascalCase only
+      "address": "0xd74dEe1C78D5C58FbdDe619b707fcFbAE50c3EEe", // EIP-55 checksummed
+      "type": "factory",                                    // See contract types below
+      "description": "Factory contract description"
+    }
+  ],
+  "social": {
+    "github": "https://github.com/project",
+    "twitter": "https://twitter.com/project",
+    "telegram": "https://t.me/project"
+  }
+}
+```
+
+### Contract Types
+
+- `token`, `factory`, `router`, `controller`, `manager`, `quoter`, `helper`
+- `oracle`, `vault`, `staking`, `governance`, `bridge`, `nft`, `pair`, `pool`, `other`
+
+### Solidity Requirements
+
+- Must include `pragma solidity` directive
+- Should include `// SPDX-License-Identifier:`
+- Must contain contract/interface/library declaration matching the contract name
+- **Security Notice:** The validator detects dangerous patterns (`selfdestruct`, `delegatecall`, `tx.origin`)
+
+---
+
+### Output Formats
+
+**Human-Readable (Default):**
+```bash
+npm run validate
+
+✅ VINU (Vita Inu) - 0x00c1E515EA9579856304198EFb15f525A0bb50f6
+Total tokens validated: 7
+All validations passed!
+```
+
+**Machine-Parseable JSON:**
+```bash
+LOG_FORMAT=json npm run validate
+
+{"timestamp":"2025-11-23T...","level":"success","message":"VINU (Vita Inu)..."}
+```
+
+---
+
+## Using the Registry
+
+### Load Token Data
+
+```javascript
+// Load specific token
+const token = require('./tokens/0x00c1E515EA9579856304198EFb15f525A0bb50f6/0x00c1E515EA9579856304198EFb15f525A0bb50f6.json');
+
+console.log(token.symbol);    // "VINU"
+console.log(token.name);      // "Vita Inu"
+console.log(token.decimals);  // 18
+console.log(token.website);   // "https://vitainu.org"
+```
+
+### Load Contract Data
+
+```javascript
+// Load project information
+const vinuswap = require('./contracts/vinuswap/info.json');
+
+console.log(vinuswap.name);       // "VinuSwap"
+console.log(vinuswap.website);    // "https://vinuswap.io"
+console.log(vinuswap.contracts);  // Array of 6 contracts
+
+// Load contract ABI
+const factoryABI = require('./contracts/vinuswap/Factory_abi.json');
+const routerABI = require('./contracts/vinuswap/Router_abi.json');
+
+// Use with ethers.js
+const { ethers } = require('ethers');
+const factory = new ethers.Contract(
+  vinuswap.contracts[0].address,
+  factoryABI,
+  provider
+);
+```
+
+### Iterate All Tokens
+
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+const tokensDir = './tokens';
+const addresses = fs.readdirSync(tokensDir)
+  .filter(f => fs.statSync(path.join(tokensDir, f)).isDirectory());
+
+const allTokens = addresses.map(address => {
+  const tokenPath = path.join(tokensDir, address, `${address}.json`);
+  return require(tokenPath);
+});
+
+console.log(`Total tokens: ${allTokens.length}`);
+allTokens.forEach(token => {
+  console.log(`${token.symbol}: ${token.name}`);
+});
+```
+
+---
+
+## Validation Rules
+
+### Token Requirements
+
+**Required Fields:**
+- `symbol` - Uppercase alphanumeric (1-20 characters)
+- `name` - Token name (1-100 characters)
+- `address` - EIP-55 checksummed Ethereum address (NOT zero address)
+- `decimals` - Integer (0-77, values > 18 show warning)
+
+**Optional Fields:**
+- `project` - Reference to contracts/{project-slug} if token has contracts
+- `logoURI` - HTTPS URL to logo image (follows Uniswap Token Lists standard)
+- `website` - Official website (HTTPS only)
+- `support` - Support email (blocks disposable email domains)
+- `github`, `twitter`, `telegram`, `discord` - Social links (HTTPS only)
+- `coingecko`, `coinmarketcap` - Listing URLs
+- `redFlags` - Structured security warnings with evidence
+
+### Contract Requirements
+
+**Required Files:**
+- `info.json` - Project metadata and contract list
+- `{ContractName}.sol` - Solidity source for each contract
+- `{ContractName}_abi.json` - ABI for each contract
+
+**Contract Name Rules:**
+- Must be PascalCase (e.g., `Factory`, `TokenRouter`)
+- Alphanumeric only (no special characters)
+- Must match the declaration in .sol file
+- No duplicates within same project
+
+---
+
+## Security
+
+### Report Security Issues
+
+**For Repository Security:**
+- Email: hello@vinuchain.org
+- Include: Detailed description, reproduction steps, impact assessment
+
+**For Token Contract Security:**
+- Check individual token `support` email in their JSON file
+- Use project `security` email if specified
+
+**For Smart Contract Security:**
+- Check project `security` email in `contracts/{project}/info.json`
+- Contact project team directly
+
+**Please do NOT open public issues for security vulnerabilities.**
+
+---
+
+## Submission Guidelines
+
+### Before Submitting
+
+1. **Validate your submission locally:**
+   ```bash
+   npm install
+   npm run validate
+   ```
+
+2. **Ensure all checks pass:**
+   - ✅ EIP-55 checksum is correct
+   - ✅ All URLs use HTTPS
+   - ✅ Email domains are legitimate (no temp mail)
+   - ✅ Contract names are PascalCase
+   - ✅ Solidity source includes pragma
+   - ✅ ABIs are valid JSON arrays
+
+3. **Run tests to verify:**
+   ```bash
+   npm test
+   ```
+
+### Submission Methods
+
+**GitHub Issue (Recommended for beginners):**
+- Guided form with validation
+- Automatic checks
+- Clear error messages
+- [Submit Token](../../issues/new?template=token-submission.yml) or [Submit Contract](../../issues/new?template=contract-submission.yml)
+
+**Pull Request (For developers):**
+- Direct repository modification
+- Requires local validation
+- Faster review for correct submissions
+- [Create PR](../../compare)
+
+### Review Process
+
+1. **Automated Validation** - GitHub Actions runs validation script
+2. **Security Checks** - 72 security tests verify submission safety
+3. **Manual Review** - Maintainers verify legitimacy
+4. **Approval** - Merged if all checks pass
+
+**Typical Review Time:** 1-3 days for valid submissions
+
+---
+
+## Development
+
+### Local Development
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/vinuchain-lists.git
+cd vinuchain-lists
+
+# Install dependencies
+npm install
+
+# Make your changes
+# Add token or contract files following the structure
+
+# Validate
+npm run validate
+
+# Run tests
+npm test
+
+# Check for security issues
+npm audit
+```
+
+### Test-Driven Development
+
+```bash
+# Watch mode - tests rerun on file changes
+npm run test:watch
+
+# Run specific test suites
+npm run test:unit       # Unit tests
+npm run test:security   # Security tests
+npm run test:integration # Integration tests
+
+# Verbose output
+npm run test:verbose
+```
+
+### Module Documentation
+
+All modules are fully documented with JSDoc:
+
+```javascript
+/**
+ * Validate EIP-55 checksum for VinuChain address
+ * @param {string} address - Address to validate
+ * @param {string} context - Context for error messages
+ * @returns {{valid: boolean, checksummed?: string, error?: string}} Validation result
+ */
+function validateEIP55Checksum(address, context = 'address') {
+  // Implementation with comprehensive error handling
+}
+```
+
+---
+
+## Advanced Usage
+
+### JSON Output for Automation
+
+```bash
+# Get JSON output for programmatic parsing
+LOG_FORMAT=json npm run validate > validation-results.json
+
+# Parse results
+cat validation-results.json | jq '.level == "error"'
+```
+
+### Custom Validation
+
+```javascript
+const { validateTokens, validateContracts } = require('./scripts/validate');
+
+// Validate tokens programmatically
+const tokenCount = validateTokens('./tokens');
+console.log(`Validated ${tokenCount} tokens`);
+
+// Validate contracts programmatically
+const { projectCount, contractCount } = validateContracts('./contracts');
+console.log(`Validated ${projectCount} projects with ${contractCount} contracts`);
+```
+
+### Integration with CI/CD
+
+```yaml
+# GitHub Actions example
+- name: Validate VinuChain Lists
+  run: |
+    npm ci
+    npm run test:all  # Validation + all tests
+
+- name: Security Audit
+  run: npm audit --audit-level=moderate
+```
+
+---
+
+## Architecture
+
+### Modular Design
+
+VinuChain Lists uses a **modular architecture** for maintainability and testability:
+
+**Utility Modules** (`scripts/utils/`):
+- `constants.js` - Configuration management
+- `safe-json.js` - Secure JSON parsing with prototype pollution protection
+- `address-validator.js` - EIP-55 validation and path safety
+- `url-validator.js` - URL validation with SSRF protection
+- `file-utils.js` - Safe file operations with path traversal protection
+- `logger.js` - Structured logging (JSON + human-readable)
+
+**Validator Modules** (`scripts/validators/`):
+- `email-validator.js` - Email domain validation
+- `abi-validator.js` - Comprehensive ABI structure validation
+- `solidity-validator.js` - Solidity security pattern detection
+
+**Core:**
+- `validate.js` - Orchestrator that coordinates all validation
+
+---
+
+## Community
+
+### Get Involved
+
+- **Report Issues:** [GitHub Issues](../../issues)
+- **Discussions:** [GitHub Discussions](../../discussions)
+- **Submit Tokens:** [Token Submission Form](../../issues/new?template=token-submission.yml)
+- **Submit Contracts:** [Contract Submission Form](../../issues/new?template=contract-submission.yml)
+
+### Code of Conduct
+
+We are committed to providing a welcoming and inclusive environment. Please read our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## Resources
+
+### Documentation
+
+- **[tokens/EXAMPLE.md](tokens/EXAMPLE.md)** - Detailed token submission guide
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+### Links
+
+- **VinuChain Website:** [vinuchain.org](https://vinuchain.org)
+- **Block Explorer:** [VinuExplorer](https://vinuexplorer.org/)
+- **RPC Endpoint:** https://rpc.vinuchain.org/
+- **GitHub:** [VinuChain/vinuchain-lists](https://github.com/VinuChain/vinuchain-lists)
+
+---
+
+## Requirements
+
+- **Node.js:** >= 18.0.0
+- **npm:** >= 9.0.0
+
+## Dependencies
+
+**Production Dependencies:** None (data repository)
+
+**Development Dependencies:**
+- `ajv` ^8.17.1 - JSON Schema validation
+- `ajv-formats` ^3.0.1 - Format validators (email, URI)
+- `ethers` ^6.13.0 - EIP-55 checksum validation
+- `mocha` ^11.7.5 - Test framework
+- `chai` ^4.5.0 - Assertion library
+
+**Dependency Status:** ✅ All secure (0 vulnerabilities)
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for full text.
+
+Copyright © 2025 VinuChain Community
+
+---
+
+## Acknowledgments
+
+**Created by:** @ElemontCapital
+
+**Standards Compliance:**
+- [EIP-55](https://eips.ethereum.org/EIPS/eip-55) - Ethereum address checksums
+- [Uniswap Token Lists](https://tokenlists.org/) - Token metadata standard
+- [JSON Schema Draft-07](https://json-schema.org/) - Validation schemas
+
+---
+
+**Maintained with ❤️ by the VinuChain Community**
+
+For questions or support, please [open an issue](../../issues/new/choose).

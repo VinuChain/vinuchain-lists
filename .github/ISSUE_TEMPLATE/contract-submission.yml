@@ -1,0 +1,179 @@
+name: Contract Project Submission
+description: Submit a new contract project to VinuChain Lists
+title: "[Contract] "
+labels: ["submission", "contract"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Submit a Contract Project
+
+        Use this form to submit a new contract project to VinuChain Lists.
+
+        **Project Structure:**
+        - Each project gets its own folder: `contracts/{project-slug}/`
+        - Project metadata goes in `info.json`
+        - Contract source code: `{ContractName}.sol`
+        - Contract ABI: `{ContractName}_abi.json`
+
+        **Please ensure:**
+        - You are authorized to submit this project information
+        - All contracts are deployed on VinuChain
+        - All contract addresses are EIP-55 checksummed
+        - You will provide source code (.sol) and ABI files
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Project Information
+
+  - type: input
+    id: project_slug
+    attributes:
+      label: Project Slug
+      description: URL-friendly project identifier (lowercase, hyphens allowed, e.g., "vinuswap")
+      placeholder: "my-project"
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Project Name
+      description: Full project name
+      placeholder: "My DeFi Project"
+    validations:
+      required: true
+
+  - type: input
+    id: website
+    attributes:
+      label: Website
+      description: Official project website (HTTPS required)
+      placeholder: "https://example.com"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Brief description of your project (max 500 characters)
+      placeholder: "A decentralized exchange protocol on VinuChain..."
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Email
+      description: General contact email
+      placeholder: "contact@example.com"
+    validations:
+      required: false
+
+  - type: input
+    id: security
+    attributes:
+      label: Security Email
+      description: Security contact email
+      placeholder: "security@example.com"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Contracts
+
+        List all contracts for this project. For each contract, provide:
+        - Name (e.g., "Factory", "Router")
+        - Address (EIP-55 checksummed)
+        - Type (e.g., factory, router, token, etc.)
+        - Description
+
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contract List
+      description: |
+        Provide contract details in this format (one per line):
+        Name | Address | Type | Description
+      placeholder: |
+        Factory | 0x... | factory | Creates trading pairs
+        Router | 0x... | router | Routes trades through pools
+      value: |
+
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Social Media
+
+  - type: input
+    id: github
+    attributes:
+      label: GitHub
+      description: GitHub repository or organization URL
+      placeholder: "https://github.com/my-project"
+    validations:
+      required: false
+
+  - type: input
+    id: twitter
+    attributes:
+      label: Twitter/X
+      description: Twitter/X profile URL
+      placeholder: "https://twitter.com/myproject"
+    validations:
+      required: false
+
+  - type: input
+    id: telegram
+    attributes:
+      label: Telegram
+      description: Telegram group or channel URL
+      placeholder: "https://t.me/myproject"
+    validations:
+      required: false
+
+  - type: input
+    id: discord
+    attributes:
+      label: Discord
+      description: Discord server invite URL
+      placeholder: "https://discord.gg/myproject"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Files
+
+        After submitting this issue, please prepare:
+        1. Source code files (.sol) for each contract
+        2. ABI files (_abi.json) for each contract
+
+        We will guide you through the submission process.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      description: Please confirm the following
+      options:
+        - label: I am authorized to submit this project information
+          required: true
+        - label: All contracts are deployed on VinuChain (Chain ID 207)
+          required: true
+        - label: All contract addresses are verified on block explorer
+          required: true
+        - label: All contract addresses are EIP-55 checksummed
+          required: true
+        - label: I can provide source code (.sol) and ABI files for all contracts
+          required: true
+        - label: All information provided is accurate and up-to-date
+          required: true
