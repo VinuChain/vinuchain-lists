@@ -2,5 +2,6 @@
   "symbol": "ETH",
   "name": "ETH@VinuChain",
   "address": "0xDd4b9b3Ce03faAbA4a3839c8B5023b7792be6e2C",
-  "decimals": 18
+  "decimals": 18,
+  "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
 }
