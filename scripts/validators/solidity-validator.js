@@ -81,11 +81,12 @@ function validateSolidityStructure(content, contractName) {
   }
 
   // Check for contract declaration with the expected name
+  // Allow for inheritance clauses (is ...) and multi-line declarations
   const contractPatterns = [
-    new RegExp(`contract\\s+${contractName}\\s*[{]`),
-    new RegExp(`interface\\s+${contractName}\\s*[{]`),
-    new RegExp(`library\\s+${contractName}\\s*[{]`),
-    new RegExp(`abstract\\s+contract\\s+${contractName}\\s*[{]`),
+    new RegExp(`contract\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    new RegExp(`interface\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    new RegExp(`library\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    new RegExp(`abstract\\s+contract\\s+${contractName}(?:[^{]*)?\\{`, 's'),
   ];
 
   const hasDeclaration = contractPatterns.some(pattern => pattern.test(content));
@@ -139,10 +140,10 @@ function validateSolidityFile(content, contractName) {
  */
 function extractContractType(content, contractName) {
   const patterns = {
-    contract: new RegExp(`contract\\s+${contractName}\\s*[{]`),
-    interface: new RegExp(`interface\\s+${contractName}\\s*[{]`),
-    library: new RegExp(`library\\s+${contractName}\\s*[{]`),
-    abstract: new RegExp(`abstract\\s+contract\\s+${contractName}\\s*[{]`),
+    contract: new RegExp(`contract\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    interface: new RegExp(`interface\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    library: new RegExp(`library\\s+${contractName}(?:[^{]*)?\\{`, 's'),
+    abstract: new RegExp(`abstract\\s+contract\\s+${contractName}(?:[^{]*)?\\{`, 's'),
   };
 
   for (const [type, pattern] of Object.entries(patterns)) {
