@@ -35,6 +35,12 @@
       "minimum": 0,
       "maximum": 77
     },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the token and its purpose",
+      "minLength": 10,
+      "maxLength": 500
+    },
     "project": {
       "type": "string",
       "description": "Reference to contracts/{project-slug}/ if this token belongs to a project",
