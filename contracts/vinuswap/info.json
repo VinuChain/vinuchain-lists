@@ -1,9 +1,9 @@
 {
   "name": "VinuSwap",
-  "website": "https://vinuswap.io",
+  "website": "https://vinuswap.org",
   "description": "Decentralized exchange protocol on VinuChain",
-  "contact": "contact@vinuswap.io",
-  "security": "security@vinuswap.io",
+  "contact": "hello@vinuchain.org",
+  "security": "hello@vinuchain.org",
   "contracts": [
     {
       "name": "Controller",
@@ -43,9 +43,9 @@
     }
   ],
   "social": {
-    "github": "https://github.com/vinuswap",
-    "twitter": "https://twitter.com/vinuswap",
-    "telegram": "https://t.me/vinuswap",
-    "discord": "https://discord.gg/vinuswap"
+    "github": "https://github.com/VinuChain",
+    "twitter": "https://x.com/vinu_swap",
+    "telegram": "https://t.me/vinuchain",
+    "discord": "https://discord.gg/vinu"
   }
 }
