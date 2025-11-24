@@ -3,5 +3,13 @@
   "name": "Wrapped VC",
   "address": "0xEd8c5530a0A086a12f57275728128a60DFf04230",
   "decimals": 18,
-  "logoURI": "https://photos.pinksale.finance/file/pinksale-logo-upload/1763954351532-a5ed77c5d0e0619b4d78c7fce1fa0edc.png"
+  "logoURI": "https://photos.pinksale.finance/file/pinksale-logo-upload/1763954351532-a5ed77c5d0e0619b4d78c7fce1fa0edc.png",
+  "coinmarketcap": "https://coinmarketcap.com/currencies/vinuchain/",
+  "coingecko": "https://www.coingecko.com/en/coins/vinuchain",
+  "twitter": "https://twitter.com/vinuchain",
+  "discord": "https://discord.gg/vinu",
+  "telegram": "https://t.me/vinuchain",
+  "medium": "https://medium.com/vinuchain",
+  "instagram": "https://instagram.com/vinuchaindao",
+  "github": "https://github.com/vinuchain"
 }
