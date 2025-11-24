@@ -36,7 +36,7 @@ The JSON file must contain the following structure:
   "address": "0x00c1E515EA9579856304198EFb15f525A0bb50f6",
   "decimals": 18,
   "description": "Bridged VINU on VinuChain, bringing the vibrant community and innovative features of Vita Inu to the VinuChain ecosystem.",
-  "project": "vinu",
+  "project": "vinuswap",
   "logoURI": "https://vinuexplorer.org/icons/vitainu.svg",
   "website": "https://vitainu.org",
   "support": "hello@vitainu.org",

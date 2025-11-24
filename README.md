@@ -179,6 +179,7 @@ To add a new contract to an existing project (e.g., `vinuswap`):
 
 ```json
 {
+  "description": "Brief description of the token and its purpose (10-500 chars)",
   "project": "project-slug",      // Reference to contracts/{project-slug}/
   "logoURI": "https://...",       // HTTPS URL to logo (200x200px PNG recommended)
   "website": "https://...",       // Official website
