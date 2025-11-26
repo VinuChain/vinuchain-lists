@@ -1,6 +1,6 @@
 # VinuChain Lists
 
-**Enterprise-grade registry of verified tokens and smart contracts on VinuChain**
+**Registry of verified tokens and smart contracts on VinuChain**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
