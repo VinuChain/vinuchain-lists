@@ -1,0 +1,21 @@
+{
+  "name": "VinuChain",
+  "website": "https://vinuchain.com",
+  "description": "VinuChain core protocol contracts including the Special Fee Contract (SFC) for staking and validator management",
+  "contact": "hello@vinuchain.com",
+  "security": "hello@vinuchain.com",
+  "contracts": [
+    {
+      "name": "SFC",
+      "address": "0xFC00FACE00000000000000000000000000000000",
+      "type": "staking",
+      "description": "Special Fee Contract — manages validator creation, stake delegation, epoch rewards, lockups, and slashing"
+    }
+  ],
+  "social": {
+    "github": "https://github.com/VinuChain",
+    "twitter": "https://x.com/vinuchain",
+    "telegram": "https://t.me/vinuchain",
+    "discord": "https://discord.gg/vinu"
+  }
+}
