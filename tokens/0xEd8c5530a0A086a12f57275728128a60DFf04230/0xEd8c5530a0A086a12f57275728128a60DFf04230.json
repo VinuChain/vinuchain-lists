@@ -4,7 +4,7 @@
   "address": "0xEd8c5530a0A086a12f57275728128a60DFf04230",
   "decimals": 18,
   "description": "Wrapped VC is the ERC-20 compatible version of VinuChain's native token, enabling seamless integration with smart contracts and DeFi protocols.",
-  "logoURI": "https://github.com/VinuChain/vinuchain-lists/blob/main/tokens/0xEd8c5530a0A086a12f57275728128a60DFf04230/0xEd8c5530a0A086a12f57275728128a60DFf04230.png?raw=true",
+  "logoURI": "https://raw.githubusercontent.com/VinuChain/vinuchain-lists/main/tokens/0xEd8c5530a0A086a12f57275728128a60DFf04230/0xEd8c5530a0A086a12f57275728128a60DFf04230.png",
   "coinmarketcap": "https://coinmarketcap.com/currencies/vinuchain/",
   "coingecko": "https://www.coingecko.com/en/coins/vinuchain",
   "twitter": "https://twitter.com/vinuchain",
