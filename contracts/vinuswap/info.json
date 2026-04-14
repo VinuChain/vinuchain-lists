@@ -1,45 +1,51 @@
 {
   "name": "VinuSwap",
   "website": "https://vinuswap.org",
-  "description": "Decentralized exchange protocol on VinuChain",
-  "contact": "hello@vinuchain.org",
-  "security": "hello@vinuchain.org",
+  "description": "VinuSwap — concentrated liquidity DEX on VinuChain based on Uniswap v3, with tiered VINU-balance discounts, protocol fee splitting via Controller, and NFT-represented positions",
+  "contact": "hello@vinuchain.com",
+  "security": "hello@vinuchain.com",
   "contracts": [
-    {
-      "name": "Controller",
-      "address": "0x47fF80713b1d66DdA47237AB374F3080E2075528",
-      "type": "controller",
-      "description": "Main controller contract"
-    },
     {
       "name": "VinuSwapFactory",
       "address": "0xd74dEe1C78D5C58FbdDe619b707fcFbAE50c3EEe",
-      "type": "factory",
-      "description": "Creates trading pairs"
+      "type": "core",
+      "description": "Deploys and tracks VinuSwapPool instances; ownership held by Controller which governs pool creation and fee settings"
     },
     {
       "name": "SwapRouter",
       "address": "0x48f450475a8b501A7480C1Fd02935a7327F713Ad",
-      "type": "router",
-      "description": "Routes trades through liquidity pools"
-    },
-    {
-      "name": "NonfungibleTokenPositionDescriptor",
-      "address": "0xCA04dFDEE5778f6c23a7BdBa46A8D95F5094e4B5",
-      "type": "helper",
-      "description": "Describes NFT positions"
+      "type": "periphery",
+      "description": "Stateless router for exact-input and exact-output single-hop and multi-hop swaps against VinuSwap pools"
     },
     {
       "name": "NonfungiblePositionManager",
       "address": "0xF699ec0764741f66F81068665eFFAeefA3c6037a",
-      "type": "manager",
-      "description": "Manages liquidity positions"
+      "type": "periphery",
+      "description": "ERC-721 position manager — mint, increase, decrease, and collect liquidity positions as NFTs; supports optional position locking until a specified timestamp"
+    },
+    {
+      "name": "NonfungibleTokenPositionDescriptor",
+      "address": "0xCA04dFDEE5778f6c23a7BdBa46A8D95F5094e4B5",
+      "type": "periphery",
+      "description": "Generates on-chain SVG token URIs for NonfungiblePositionManager NFTs"
     },
     {
       "name": "VinuSwapQuoter",
       "address": "0xEed635Fa2343355d9bA726C379F2B5dEa70fE65C",
-      "type": "quoter",
-      "description": "Provides price quotes"
+      "type": "periphery",
+      "description": "Off-chain quoter — simulates swaps to return expected output/input amounts and price impact without executing a trade"
+    },
+    {
+      "name": "Controller",
+      "address": "0x47fF80713b1d66DdA47237AB374F3080E2075528",
+      "type": "governance",
+      "description": "Owns VinuSwapFactory; manages pool creation, initialization, protocol fee configuration, fee collection, and distribution to payee accounts by share"
+    },
+    {
+      "name": "WETH9",
+      "address": "0xed8c5530a0a086a12f57275728128a60dff04230",
+      "type": "token",
+      "description": "Wrapped VC (WVC) — ERC-20 wrapper for the native VC token, used as the base currency in VinuSwap pool pairs"
     }
   ],
   "social": {
