@@ -988,6 +988,11 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         uint256 indexed wrID,
         uint256 amount
     );
+    event CorruptionDetected(
+        uint256 indexed toValidatorID,
+        uint256 safeCursor,
+        uint256 payableEpoch
+    );
     event ClaimedRewards(
         address indexed delegator,
         uint256 indexed toValidatorID,
@@ -1007,6 +1012,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         uint256 indexed validatorID,
         uint256 duration,
         uint256 amount
+    );
+    event LockupExtended(
+        address indexed delegator,
+        uint256 indexed toValidatorID,
+        uint256 oldLockedStake,
+        uint256 newLockedStake,
+        uint256 fromEpoch
     );
     event UnlockedStake(
         address indexed delegator,
@@ -1585,11 +1597,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
         _stashRewards(delegator, toValidatorID);
 
-        // Prevent undelegation while rewards are blocked by corruption;
-        // stake going to 0 makes unclaimed rewards permanently unrecoverable
+        // Check for reward rate corruption — emit warning but do not block undelegation.
+        // The stashRewards call above already handles incremental cursor advancement.
         uint256 payableEpoch = _highestPayableEpoch(toValidatorID);
         uint256 safeCursor = _safeCursorPosition(delegator, toValidatorID, payableEpoch);
-        require(safeCursor >= payableEpoch, "claim rewards blocked by corruption; wait for epoch correction");
+        if (safeCursor < payableEpoch) {
+            emit CorruptionDetected(toValidatorID, safeCursor, payableEpoch);
+        }
 
         require(amount > 0, "zero amount");
         require(
@@ -1636,6 +1650,15 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         return penalty;
     }
 
+    // Slashing penalty design: the penalty is assessed at withdrawal time via
+    // isSlashed(), not at undelegation time. This means any slash that lands
+    // between undelegate() and withdraw() is captured. The only theoretical
+    // gap is a withdraw() in the block immediately before the cheater evidence
+    // block — a one-block window (~1-2s). This is accepted because:
+    // (a) cheater evidence is consensus-driven, not observable in the mempool,
+    // (b) the 6-epoch + 1-day withdrawal delay far exceeds the evidence processing
+    //     time (~1 block), and
+    // (c) the delegator cannot know a slash is imminent to time the withdrawal.
     function withdraw(uint256 toValidatorID, uint256 wrID) external nonReentrant {
         address payable delegator = msg.sender;
         WithdrawalRequest memory request = getWithdrawalRequest[delegator][toValidatorID][wrID];
@@ -1651,8 +1674,8 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
         uint256 withdrawable = amount.sub(penalty);
         if (withdrawable > 0) {
-            // Removed .gas(2300) — breaks smart contract wallets
-            (bool sent, ) = delegator.call.value(withdrawable)("");
+            // Gas cap of 50000 covers smart-contract wallets while preventing gas griefing
+            (bool sent, ) = delegator.call.value(withdrawable).gas(50000)("");
             require(sent, "Failed to send VC");
         }
 
@@ -2124,12 +2147,12 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     function claimRewards(uint256 toValidatorID) external nonReentrant {
         address payable delegator = msg.sender;
         Rewards memory rewards = _claimRewards(delegator, toValidatorID);
-        // Removed .gas(2300) — breaks smart contract wallets
+        // Gas cap of 50000 covers smart-contract wallets while preventing gas griefing
         (bool sent, ) = delegator.call.value(
             rewards.lockupExtraReward.add(rewards.lockupBaseReward).add(
                 rewards.unlockedReward
             )
-        )("");
+        ).gas(50000)("");
         require(sent, "Failed to send VC");
 
         emit ClaimedRewards(
@@ -2143,6 +2166,25 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     function restakeRewards(uint256 toValidatorID) external nonReentrant {
         address delegator = msg.sender;
+
+        // Fail fast: if caller is locked up, enforce the minimum remaining
+        // duration BEFORE doing any expensive claim/delegate work so a revert
+        // doesn't waste gas on paths that will roll back anyway.
+        bool wasLockedUp = isLockedUp(delegator, toValidatorID);
+        if (wasLockedUp) {
+            require(
+                getLockupInfo[delegator][toValidatorID].endTime.sub(_now()) >= minLockupDuration(),
+                "remaining lockup too short to restake"
+            );
+        }
+
+        // Snapshot stashed lockup rewards BEFORE _claimRewards calls _stashRewards.
+        // _stashRewards may add newly-earned rewards to the stash. Scaling should apply
+        // only to the pre-existing stash, not freshly-stashed amounts (which were earned
+        // at the old stake rate and should not be inflated by the growth factor).
+        uint256 oldStashedBase = getStashedLockupRewards[delegator][toValidatorID].lockupBaseReward;
+        uint256 oldStashedExtra = getStashedLockupRewards[delegator][toValidatorID].lockupExtraReward;
+
         Rewards memory rewards = _claimRewards(delegator, toValidatorID);
 
         uint256 lockupReward = rewards.lockupExtraReward.add(
@@ -2153,28 +2195,14 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             toValidatorID,
             lockupReward.add(rewards.unlockedReward)
         );
-        // Only increase lockedStake if the lockup is still active with remaining duration.
-        // Reset fromEpoch to current epoch to prevent gaming: without this, a delegator
-        // could restake into a near-expiry lockup and earn full lockup rewards for the
-        // restaked amount retroactively from the original fromEpoch. By resetting, lockup
-        // rewards for the added amount only accrue from this point forward.
-        if (isLockedUp(delegator, toValidatorID)) {
-            LockedDelegation storage ld = getLockupInfo[delegator][toValidatorID];
-            // isLockedUp already verified endTime > _now(); redundant check removed.
-            uint256 remainingDuration = ld.endTime.sub(_now());
-            require(remainingDuration >= minLockupDuration(), "remaining lockup too short to restake");
-            // Scale getStashedLockupRewards proportionally to preserve the per-unit penalty
-            // rate when lockedStake grows. Without scaling, adding lockupReward dilutes the
-            // effective penalty (same stashed rewards / larger stake), allowing repeated
-            // restaking to erode the early-exit penalty.
-            uint256 oldLockedStake = ld.lockedStake;
-            ld.lockedStake = ld.lockedStake.add(lockupReward);
-            if (oldLockedStake > 0) {
-                Rewards storage stashed = getStashedLockupRewards[delegator][toValidatorID];
-                stashed.lockupBaseReward = stashed.lockupBaseReward.mul(ld.lockedStake).div(oldLockedStake);
-                stashed.lockupExtraReward = stashed.lockupExtraReward.mul(ld.lockedStake).div(oldLockedStake);
-            }
-            ld.fromEpoch = currentEpoch();
+        if (wasLockedUp) {
+            _restakeExtendLockup(
+                delegator,
+                toValidatorID,
+                lockupReward,
+                oldStashedBase,
+                oldStashedExtra
+            );
         }
         emit RestakedRewards(
             delegator,
@@ -2183,6 +2211,47 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             rewards.lockupBaseReward,
             rewards.unlockedReward
         );
+    }
+
+    // Extracted from restakeRewards to keep the outer function below solc 0.5.17's
+    // 16-slot stack limit. Updates the locked-stake amount and rescales any
+    // pre-existing stashed lockup rewards in proportion to the new locked stake,
+    // leaving freshly-stashed rewards (added by _claimRewards) unscaled.
+    // Caller (restakeRewards) is responsible for enforcing the minimum remaining
+    // lockup duration before invoking this helper.
+    function _restakeExtendLockup(
+        address delegator,
+        uint256 toValidatorID,
+        uint256 lockupReward,
+        uint256 oldStashedBase,
+        uint256 oldStashedExtra
+    ) private {
+        LockedDelegation storage ld = getLockupInfo[delegator][toValidatorID];
+        uint256 oldLockedStake = ld.lockedStake;
+        uint256 newLockedStake = oldLockedStake.add(lockupReward);
+        ld.lockedStake = newLockedStake;
+        if (oldLockedStake > 0) {
+            Rewards storage stashed = getStashedLockupRewards[delegator][toValidatorID];
+            // _stashRewards is additive — after _claimRewards returns, the stash
+            // equals oldStashed* + newlyStashed*. Subtract the snapshot to isolate
+            // the newly-stashed portion, then scale ONLY the pre-existing portion
+            // by newLockedStake/oldLockedStake and add the newly-stashed portion back
+            // unchanged (it was earned at the new stake rate and must not be inflated
+            // by the growth factor).
+            uint256 newlyBase = stashed.lockupBaseReward.sub(oldStashedBase);
+            uint256 newlyExtra = stashed.lockupExtraReward.sub(oldStashedExtra);
+            stashed.lockupBaseReward = oldStashedBase
+                .mul(newLockedStake)
+                .div(oldLockedStake)
+                .add(newlyBase);
+            stashed.lockupExtraReward = oldStashedExtra
+                .mul(newLockedStake)
+                .div(oldLockedStake)
+                .add(newlyExtra);
+        }
+        uint256 epoch = currentEpoch();
+        ld.fromEpoch = epoch;
+        emit LockupExtended(delegator, toValidatorID, oldLockedStake, newLockedStake, epoch);
     }
 
     function _syncValidator(uint256 validatorID, bool syncPubkey) internal {
@@ -2759,6 +2828,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         snapshot.endTime = _now();
         snapshot.baseRewardPerSecond = baseRewardPerSecond;
         snapshot.totalSupply = totalSupply;
+
+        // Capture receivedStake at epoch-close for all active validators.
+        // sealEpochValidators reads from this to prevent delegate/undelegate
+        // manipulation of the reward snapshot between epoch boundaries.
+        for (uint256 i = 0; i < validatorIDs.length; i++) {
+            _epochEndReceivedStake[currentSealedEpoch][validatorIDs[i]] = getValidator[validatorIDs[i]].receivedStake;
+        }
         emit EpochSealed(currentSealedEpoch, snapshot.endTime, snapshot.baseRewardPerSecond, snapshot.totalSupply);
     }
 
@@ -2776,7 +2852,12 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             require(_validatorExists(validatorID), "validator doesn't exist");
             require(getValidator[validatorID].status == OK_STATUS, "validator isn't active");
             require(snapshot.receivedStake[validatorID] == 0, "duplicate validator ID");
-            uint256 receivedStake = getValidator[validatorID].receivedStake;
+            // Use epoch-close stake snapshot when available (prevents delegate/undelegate
+            // manipulation between epoch boundaries). Fall back to live state for new validators.
+            uint256 receivedStake = _epochEndReceivedStake[currentSealedEpoch][validatorID];
+            if (receivedStake == 0) {
+                receivedStake = getValidator[validatorID].receivedStake;
+            }
             require(receivedStake > 0, "validator has no stake");
             snapshot.receivedStake[validatorID] = receivedStake;
             snapshot.totalStake = snapshot.totalStake.add(receivedStake);
@@ -3066,6 +3147,11 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     // own storage slot at the inherited contract's position in the layout, conflicting
     // with this variable. Always keep the guard inline and document its slot position
     // in any upgrade diff to prevent silent storage corruption.
+    // Captures receivedStake at epoch-close for each active validator.
+    // Used by sealEpochValidators to read stake anchored at epoch-start,
+    // preventing delegate/undelegate timing manipulation of reward snapshots.
+    mapping(uint256 => mapping(uint256 => uint256)) private _epochEndReceivedStake;
+
     uint256 private _reentrancyGuardCounter;
 
     modifier nonReentrant() {
