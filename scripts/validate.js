@@ -395,18 +395,17 @@ function validateContracts(contractsDir) {
       continue;
     }
 
+    // Validate each contract
+    let projectValid = true;
+
     // Check for duplicate contract names within project (addresses LOW-03)
     const contractNames = new Set();
     for (const contract of projectData.contracts) {
       if (contractNames.has(contract.name)) {
-        logger.error(`  Duplicate contract name in ${projectSlug}: ${contract.name}`);
-        projectValid = false;
+        logger.warn(`  Duplicate contract name in ${projectSlug}: ${contract.name} (multiple deployments)`);
       }
       contractNames.add(contract.name);
     }
-
-    // Validate each contract
-    let projectValid = true;
     for (const contract of projectData.contracts) {
       const contractValid = validateContractFiles(contract, projectSlug, projectPath);
       if (contractValid) {

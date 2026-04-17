@@ -13,13 +13,13 @@
     },
     {
       "name": "NodeDriverAuth",
-      "address": "0xd100ae0000000000000000000000000000000000",
+      "address": "0xD100ae0000000000000000000000000000000000",
       "type": "system",
       "description": "Owner-controlled governance contract for network administration — queues and executes time-locked migrations, network rule updates, epoch advances, and nonce increments"
     },
     {
       "name": "NodeDriver",
-      "address": "0xd100a01e00000000000000000000000000000000",
+      "address": "0xd100A01E00000000000000000000000000000000",
       "type": "system",
       "description": "EVM-facing relay contract between NodeDriverAuth and the EvmWriter precompile — emits canonical events for validator weight/pubkey changes, network rule updates, and epoch advances"
     }

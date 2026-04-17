@@ -40,12 +40,6 @@
       "address": "0x47fF80713b1d66DdA47237AB374F3080E2075528",
       "type": "governance",
       "description": "Owns VinuSwapFactory; manages pool creation, initialization, protocol fee configuration, fee collection, and distribution to payee accounts by share"
-    },
-    {
-      "name": "WETH9",
-      "address": "0xed8c5530a0a086a12f57275728128a60dff04230",
-      "type": "token",
-      "description": "Wrapped VC (WVC) — ERC-20 wrapper for the native VC token, used as the base currency in VinuSwap pool pairs"
     }
   ],
   "social": {

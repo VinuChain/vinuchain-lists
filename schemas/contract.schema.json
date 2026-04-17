@@ -84,6 +84,11 @@
               "nft",
               "pair",
               "pool",
+              "lending",
+              "core",
+              "periphery",
+              "utility",
+              "system",
               "other"
             ]
           },
