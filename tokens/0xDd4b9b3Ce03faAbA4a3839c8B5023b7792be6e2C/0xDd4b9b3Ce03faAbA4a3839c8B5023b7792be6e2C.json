@@ -4,5 +4,7 @@
   "address": "0xDd4b9b3Ce03faAbA4a3839c8B5023b7792be6e2C",
   "decimals": 18,
   "description": "Bridged Ethereum on VinuChain, allowing ETH holders to participate in VinuChain's DeFi ecosystem with lower fees.",
-  "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
+  "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  "coingecko":"https://www.coingecko.com/en/coins/ethereum",
+  "coinmarketcap":"https://coinmarketcap.com/currencies/ethereum/"
 }
