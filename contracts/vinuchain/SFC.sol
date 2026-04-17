@@ -320,6 +320,7 @@ contract NodeDriverAuth is Initializable, Ownable {
     }
 
     function queueMigration(address newDriverAuth) external onlyOwner {
+        require(pendingMigration == address(0) || block.timestamp > pendingMigrationUnlockTime, "migration pending");
         require(newDriverAuth != address(0), "invalid newDriverAuth address");
         require(isContract(newDriverAuth), "newDriverAuth must be a contract");
         pendingMigration = newDriverAuth;
@@ -329,7 +330,7 @@ contract NodeDriverAuth is Initializable, Ownable {
 
     function executeMigration() external onlyOwner {
         require(pendingMigrationUnlockTime != 0, "no pending migration");
-        require(block.timestamp >= pendingMigrationUnlockTime, "timelock not expired");
+        require(block.timestamp > pendingMigrationUnlockTime, "timelock not expired");
         address target = pendingMigration;
         require(isContract(target), "target no longer a contract");
         pendingMigration = address(0);
@@ -338,6 +339,12 @@ contract NodeDriverAuth is Initializable, Ownable {
         emit MigrationExecuted(target);
     }
 
+    /// @dev No cancel-requeue cooldown is applied because this parameter is
+    /// forward-only (one-shot structural migration) — the pending value does
+    /// not directly subtract from user claims, so the substitution hazard does
+    /// not apply. Cooldown is reserved for value-substitution flows
+    /// (slashingRefundRatio, epoch corrections) where a cancel-and-substitute
+    /// could harm delegators who planned around the pending value.
     function cancelMigration() external onlyOwner {
         require(pendingMigrationUnlockTime != 0, "no pending migration");
         pendingMigration = address(0);
@@ -351,6 +358,7 @@ contract NodeDriverAuth is Initializable, Ownable {
     }
 
     function queueCopyCode(address acc, address from) external onlyOwner {
+        require(pendingCopyCodeTarget == address(0) || block.timestamp > pendingCopyCodeUnlockTime, "copyCode pending");
         require(isContract(acc) && isContract(from), "not a contract");
         pendingCopyCodeTarget = acc;
         pendingCopyCodeSource = from;
@@ -360,7 +368,7 @@ contract NodeDriverAuth is Initializable, Ownable {
 
     function executeCopyCode() external onlyOwner {
         require(pendingCopyCodeUnlockTime != 0, "no pending copyCode");
-        require(block.timestamp >= pendingCopyCodeUnlockTime, "timelock not expired");
+        require(block.timestamp > pendingCopyCodeUnlockTime, "timelock not expired");
         address acc = pendingCopyCodeTarget;
         address from = pendingCopyCodeSource;
         require(isContract(acc) && isContract(from), "target or source no longer a contract");
@@ -371,6 +379,12 @@ contract NodeDriverAuth is Initializable, Ownable {
         emit CopyCodeExecuted(acc, from);
     }
 
+    /// @dev No cancel-requeue cooldown is applied because this parameter is
+    /// forward-only (one-shot structural bytecode copy) — the pending value
+    /// does not directly subtract from user claims, so the substitution hazard
+    /// does not apply. Cooldown is reserved for value-substitution flows
+    /// (slashingRefundRatio, epoch corrections) where a cancel-and-substitute
+    /// could harm delegators who planned around the pending value.
     function cancelCopyCode() external onlyOwner {
         require(pendingCopyCodeUnlockTime != 0, "no pending copyCode");
         pendingCopyCodeTarget = address(0);
@@ -935,6 +949,14 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     // after delegators have already observed and planned around the original value.
     mapping(uint256 => mapping(uint256 => uint256)) public correctionCancelTime;
 
+    // Accumulates the total positive upward drift ever applied to
+    // correctedEpochRewardRate[epoch][validatorID] across all executed
+    // corrections/revisions. Bounded by CUMULATIVE_CORRECTION_MULTIPLIER *
+    // maxCorrectionDelta (enforced at execute time). Downward revisions do
+    // not reduce the counter, so they cannot create budget for compensating
+    // upward compounding later.
+    mapping(uint256 => mapping(uint256 => uint256)) public totalCorrectionDelta;
+
     uint256 public pendingMaxCorrectionDelta;
     uint256 public pendingMaxCorrectionDeltaUnlockTime;
 
@@ -944,6 +966,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     uint256 public pendingOfflinePenaltyBlocksNum;
     uint256 public pendingOfflinePenaltyTime;
     uint256 public pendingOfflinePenaltyUnlockTime;
+
+    struct PendingSlashingRefund {
+        uint256 ratio;
+        uint256 unlockTime;
+    }
+    mapping(uint256 => PendingSlashingRefund) public pendingSlashingRefundRatios;
+    mapping(uint256 => uint256) public lastSlashingRefundRatioCancelledAt;
 
     mapping(bytes32 => bool) internal usedPubkeyHash;
 
@@ -1077,6 +1106,17 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     event MaxCorrectionDeltaUpdated(uint256 oldValue, uint256 newValue);
     event MaxCorrectionDeltaQueued(uint256 newValue, uint256 unlockTime);
     event MaxCorrectionDeltaCancelled();
+    // Emitted whenever a correction execution applies non-zero upward drift
+    // to an (epoch, validatorID) pair. `increment` is the positive difference
+    // between the new and prior corrected rate; `totalUpwardDelta` is the
+    // updated running total post-increment. Observers can use this to track
+    // cumulative governance impact on a single epoch's rate.
+    event CumulativeCorrectionDeltaUpdated(
+        uint256 indexed epoch,
+        uint256 indexed validatorID,
+        uint256 increment,
+        uint256 totalUpwardDelta
+    );
     event ReactivatedValidator(uint256 indexed validatorID);
     event BaseRewardPerSecQueued(uint256 newValue, uint256 unlockTime);
     event BaseRewardPerSecExecuted(uint256 oldValue, uint256 newValue);
@@ -1350,6 +1390,12 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             ld.fromEpoch = lockupFromEpoch;
             ld.endTime = lockupEndTime;
             ld.duration = lockupDuration;
+            /// @dev Intentionally seeds `getStashedLockupRewards.lockupExtraReward`
+            /// only — no matching `_rewardsStash.lockupExtraReward` entry.
+            /// `earlyUnlockPenalty` is the penalty basis, not a claimable
+            /// reward; writing it only to the lockup-rewards record preserves
+            /// the "what would be refunded if unlocked early" semantic without
+            /// creating phantom claimable rewards.
             getStashedLockupRewards[delegator][toValidatorID]
                 .lockupExtraReward = earlyUnlockPenalty;
             emit LockedUpStake(
@@ -1770,13 +1816,11 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         if (txRewardWeight == 0 || totalTxRewardWeight == 0) {
             return 0;
         }
-        uint256 txReward = epochFee.mul(txRewardWeight).div(
-            totalTxRewardWeight
+        // Combine multiplications before dividing to avoid precision loss from two sequential integer divisions.
+        // epochFee (≤1e24 wei) × txRewardWeight (≤1e20) × commission_factor (≤1e18) ≈ 1e62, safe within uint256.
+        return epochFee.mul(txRewardWeight).mul(Decimal.unit().sub(contractCommission())).div(
+            totalTxRewardWeight.mul(Decimal.unit())
         );
-        return
-            txReward.mul(Decimal.unit().sub(contractCommission())).div(
-                Decimal.unit()
-            );
     }
 
     function _calcValidatorCommission(uint256 rawReward, uint256 commission)
@@ -2298,7 +2342,7 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     function executeBaseRewardPerSecond() external onlyOwner {
         require(pendingBaseRewardPerSecondUnlockTime != 0, "no pending update");
-        require(_now() >= pendingBaseRewardPerSecondUnlockTime, "timelock not expired");
+        require(_now() > pendingBaseRewardPerSecondUnlockTime, "timelock not expired");
         require(
             pendingBaseRewardPerSecond <= MAX_BASE_REWARD_PER_SECOND,
             "too large reward per second"
@@ -2310,6 +2354,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         emit BaseRewardPerSecExecuted(oldValue, baseRewardPerSecond);
     }
 
+    /// @dev No cancel-requeue cooldown is applied because baseRewardPerSecond
+    /// is forward-only — future reward accrual changes when executed, but the
+    /// pending value does not directly subtract from user claims while queued,
+    /// so the substitution hazard does not apply. Cooldown is reserved for
+    /// value-substitution flows (slashingRefundRatio, epoch corrections)
+    /// where a cancel-and-substitute could harm delegators who planned around
+    /// the pending value.
     function cancelBaseRewardPerSecond() external onlyOwner {
         require(pendingBaseRewardPerSecondUnlockTime != 0, "no pending update");
         pendingBaseRewardPerSecond = 0;
@@ -2334,7 +2385,7 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     function executeOfflinePenaltyThreshold() external onlyOwner {
         require(pendingOfflinePenaltyUnlockTime != 0, "no pending update");
-        require(_now() >= pendingOfflinePenaltyUnlockTime, "timelock not expired");
+        require(_now() > pendingOfflinePenaltyUnlockTime, "timelock not expired");
         offlinePenaltyThresholdBlocksNum = pendingOfflinePenaltyBlocksNum;
         offlinePenaltyThresholdTime = pendingOfflinePenaltyTime;
         pendingOfflinePenaltyBlocksNum = 0;
@@ -2343,6 +2394,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         emit UpdatedOfflinePenaltyThreshold(offlinePenaltyThresholdBlocksNum, offlinePenaltyThresholdTime);
     }
 
+    /// @dev No cancel-requeue cooldown is applied because the offline penalty
+    /// threshold is forward-only — it gates future validator deactivations,
+    /// not retrospective claim amounts, so the pending value does not directly
+    /// subtract from user claims and the substitution hazard does not apply.
+    /// Cooldown is reserved for value-substitution flows (slashingRefundRatio,
+    /// epoch corrections) where a cancel-and-substitute could harm delegators
+    /// who planned around the pending value.
     function cancelOfflinePenaltyThreshold() external onlyOwner {
         require(pendingOfflinePenaltyUnlockTime != 0, "no pending update");
         pendingOfflinePenaltyBlocksNum = 0;
@@ -2351,17 +2409,57 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         emit OfflinePenaltyThresholdCancelled();
     }
 
-    function updateSlashingRefundRatio(uint256 validatorID, uint256 refundRatio)
+    // updateSlashingRefundRatio was replaced by queueSlashingRefundRatio / executeSlashingRefundRatio
+    // to match the CORRECTION_TIMELOCK governance pattern used by all other owner parameters.
+
+    event SlashingRefundRatioQueued(uint256 indexed validatorID, uint256 refundRatio, uint256 unlockTime);
+    event SlashingRefundRatioCancelled(uint256 indexed validatorID);
+
+    function queueSlashingRefundRatio(uint256 validatorID, uint256 refundRatio)
         external
         onlyOwner
     {
+        require(
+            lastSlashingRefundRatioCancelledAt[validatorID] == 0 ||
+            _now() >= lastSlashingRefundRatioCancelledAt[validatorID].add(CORRECTION_TIMELOCK),
+            "must wait after cancel"
+        );
+        PendingSlashingRefund storage existing = pendingSlashingRefundRatios[validatorID];
+        if (existing.unlockTime != 0) {
+            require(_now() > existing.unlockTime, "slashing refund ratio update pending");
+            emit SlashingRefundRatioCancelled(validatorID);
+        }
         require(isSlashed(validatorID), "validator isn't slashed");
         require(
             refundRatio <= Decimal.unit(),
             "must be less than or equal to 1.0"
         );
+        uint256 unlockTime = _now().add(CORRECTION_TIMELOCK);
+        pendingSlashingRefundRatios[validatorID] = PendingSlashingRefund({ratio: refundRatio, unlockTime: unlockTime});
+        emit SlashingRefundRatioQueued(validatorID, refundRatio, unlockTime);
+    }
+
+    function executeSlashingRefundRatio(uint256 validatorID) external onlyOwner {
+        PendingSlashingRefund storage pending = pendingSlashingRefundRatios[validatorID];
+        require(pending.unlockTime != 0, "no pending update");
+        require(_now() > pending.unlockTime, "timelock not expired");
+        uint256 refundRatio = pending.ratio;
+        require(isSlashed(validatorID), "validator isn't slashed");
+        require(
+            refundRatio <= Decimal.unit(),
+            "must be less than or equal to 1.0"
+        );
+        delete pendingSlashingRefundRatios[validatorID];
         slashingRefundRatio[validatorID] = refundRatio;
         emit UpdatedSlashingRefundRatio(validatorID, refundRatio);
+    }
+
+    function cancelSlashingRefundRatio(uint256 validatorID) external onlyOwner {
+        PendingSlashingRefund storage pending = pendingSlashingRefundRatios[validatorID];
+        require(pending.unlockTime != 0, "no pending update");
+        delete pendingSlashingRefundRatios[validatorID];
+        lastSlashingRefundRatioCancelledAt[validatorID] = _now();
+        emit SlashingRefundRatioCancelled(validatorID);
     }
 
     function queueCorruptedEpochCorrection(
@@ -2517,7 +2615,7 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         require(epoch > 0, "cannot correct genesis epoch");
         PendingCorrection storage pending = pendingCorrections[epoch][validatorID];
         require(pending.unlockTime != 0, "no pending correction");
-        require(_now() >= pending.unlockTime, "timelock not expired");
+        require(_now() > pending.unlockTime, "timelock not expired");
 
         // Re-validate bounds: adjacent corrections during timelock may have changed rates
         uint256 previousRate = _getEffectiveRewardRate(epoch.sub(1), validatorID);
@@ -2540,7 +2638,31 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             "stale: correction delta exceeds maximum"
         );
 
-        correctedEpochRewardRate[epoch][validatorID] = pending.correctedAccumulatedRewardPerToken;
+        // Cumulative upward-drift cap. The per-correction cap above only
+        // bounds the size of this single revision versus the prior-epoch
+        // rate. A sequence of revisions to the SAME (epoch, validatorID) that
+        // each respect the per-correction cap could still compound the
+        // corrected rate upward well past the intended governance envelope.
+        // Enforce a hard cap of CUMULATIVE_CORRECTION_MULTIPLIER *
+        // maxCorrectionDelta on the running sum of POSITIVE increments to
+        // this corrected rate. Downward revisions are allowed without budget
+        // consumption and, importantly, do not reduce the counter — otherwise
+        // an attacker with governance control could ping-pong down/up to
+        // circumvent the cap.
+        uint256 oldCorrected = correctedEpochRewardRate[epoch][validatorID];
+        uint256 newCorrected = pending.correctedAccumulatedRewardPerToken;
+        if (newCorrected > oldCorrected) {
+            uint256 increment = newCorrected.sub(oldCorrected);
+            uint256 newTotal = totalCorrectionDelta[epoch][validatorID].add(increment);
+            require(
+                newTotal <= maxCorrectionDelta.mul(CUMULATIVE_CORRECTION_MULTIPLIER),
+                "cumulative correction cap exceeded"
+            );
+            totalCorrectionDelta[epoch][validatorID] = newTotal;
+            emit CumulativeCorrectionDeltaUpdated(epoch, validatorID, increment, newTotal);
+        }
+
+        correctedEpochRewardRate[epoch][validatorID] = newCorrected;
         isEpochCorrected[epoch][validatorID] = true;
         correctionReasonHash[epoch][validatorID] = keccak256(bytes(pending.reason));
 
@@ -2581,6 +2703,19 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     uint256 public constant MAX_CORRECTION_DELTA_CAP = 1e16;
 
+    // Hard-coded multiplier bounding cumulative upward drift of a single
+    // (epoch, validatorID)'s corrected rate. The per-correction cap
+    // (`maxCorrectionDelta`) prevents any one revision from exceeding its
+    // limit, but a sequence of N revisions could otherwise compound to
+    // N * maxCorrectionDelta above the original raw rate. At execute time we
+    // require the running `totalCorrectionDelta` + new positive increment to
+    // stay within `CUMULATIVE_CORRECTION_MULTIPLIER * maxCorrectionDelta`.
+    // The multiplier value (3x) is chosen to accommodate one initial
+    // correction plus up to two forensic revisions before the governance
+    // budget is exhausted; further corrections would require a new
+    // `maxCorrectionDelta` execution through the existing timelock pattern.
+    uint256 public constant CUMULATIVE_CORRECTION_MULTIPLIER = 3;
+
     function queueMaxCorrectionDelta(uint256 _maxDelta) external onlyOwner {
         require(_maxDelta > 0, "cannot disable corrections");
         require(_maxDelta <= MAX_CORRECTION_DELTA_CAP, "exceeds maximum correction delta cap");
@@ -2591,7 +2726,7 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     function executeMaxCorrectionDelta() external onlyOwner {
         require(pendingMaxCorrectionDeltaUnlockTime != 0, "no pending update");
-        require(_now() >= pendingMaxCorrectionDeltaUnlockTime, "timelock not expired");
+        require(_now() > pendingMaxCorrectionDeltaUnlockTime, "timelock not expired");
         // Defensive: cancelMaxCorrectionDelta zeroes both fields atomically, so this
         // check is redundant given the unlockTime guard above, but prevents a
         // zero-value execution if the pattern is extended in a future upgrade.
@@ -2603,6 +2738,14 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         emit MaxCorrectionDeltaUpdated(oldValue, maxCorrectionDelta);
     }
 
+    /// @dev No cancel-requeue cooldown is applied because maxCorrectionDelta
+    /// is forward-only — it only bounds the magnitude of future correction
+    /// operations, not any already-observed claimable value, so the pending
+    /// value does not directly subtract from user claims and the substitution
+    /// hazard does not apply. Cooldown is reserved for value-substitution
+    /// flows (slashingRefundRatio, epoch corrections) where a
+    /// cancel-and-substitute could harm delegators who planned around the
+    /// pending value.
     function cancelMaxCorrectionDelta() external onlyOwner {
         require(pendingMaxCorrectionDeltaUnlockTime != 0, "no pending update");
         pendingMaxCorrectionDelta = 0;
@@ -2993,6 +3136,25 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         _lockStake(delegator, toValidatorID, lockupDuration, amount);
     }
 
+    // Computes the early-unlock penalty for `unlockAmount` out of `totalAmount`
+    // locked stake, and consumes the proportional slice of the two lockup-reward
+    // components that constitute the penalty basis.
+    //
+    // Invariant preserved at the cap boundary:
+    //   (lockupExtraRewardShare consumed) + (lockupBaseRewardShare consumed) / 2
+    //     == returned `penalty`
+    //
+    // When `originalPenalty` exceeds `unlockAmount`, the penalty is clamped to
+    // `unlockAmount` (`cappedPenalty`) to avoid penalizing the delegator more
+    // than they are unlocking. Both reward-share deductions are rescaled by
+    // the ratio `cappedPenalty / originalPenalty` so the invariant above still
+    // holds post-clamp and stashed rewards are NOT over-deducted.
+    //
+    // Note: only `getStashedLockupRewards.lockupExtraReward` and
+    // `getStashedLockupRewards.lockupBaseReward` feed into the penalty basis;
+    // `_rewardsStash[delegator][toValidatorID].unlockedReward` is claimable
+    // reward value (not a penalty component) and is intentionally NOT deducted
+    // here — claimants still collect it via the normal reward-claim path.
     function _popDelegationUnlockPenalty(
         address delegator,
         uint256 toValidatorID,
@@ -3006,15 +3168,21 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         uint256 lockupBaseRewardShare = getStashedLockupRewards[delegator][
             toValidatorID
         ].lockupBaseReward.mul(unlockAmount).div(totalAmount);
-        uint256 penalty = lockupExtraRewardShare.add(lockupBaseRewardShare.div(2));
-        if (penalty >= unlockAmount) {
-            // Scale back reward deductions proportionally when penalty is capped,
-            // so stashed rewards are not over-deducted relative to the actual penalty.
-            if (penalty > 0) {
-                lockupExtraRewardShare = lockupExtraRewardShare.mul(unlockAmount).div(penalty);
-                lockupBaseRewardShare = lockupBaseRewardShare.mul(unlockAmount).div(penalty);
+        uint256 originalPenalty = lockupExtraRewardShare.add(lockupBaseRewardShare.div(2));
+        uint256 cappedPenalty = originalPenalty;
+        if (originalPenalty >= unlockAmount) {
+            // Penalty is clamped to unlockAmount. Rescale both reward-share
+            // deductions by cappedPenalty / originalPenalty (algebraically
+            // equivalent to unlockAmount / originalPenalty at this branch) so
+            // the stashed-reward deductions remain proportional to the actual
+            // penalty applied. originalPenalty > 0 is guaranteed here because
+            // originalPenalty >= unlockAmount > 0 follows from the branch
+            // condition plus the unlockStake require that `amount > 0`.
+            cappedPenalty = unlockAmount;
+            if (originalPenalty > 0) {
+                lockupExtraRewardShare = lockupExtraRewardShare.mul(cappedPenalty).div(originalPenalty);
+                lockupBaseRewardShare = lockupBaseRewardShare.mul(cappedPenalty).div(originalPenalty);
             }
-            penalty = unlockAmount;
         }
         getStashedLockupRewards[delegator][toValidatorID]
             .lockupExtraReward = getStashedLockupRewards[delegator][
@@ -3024,7 +3192,7 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
             .lockupBaseReward = getStashedLockupRewards[delegator][
             toValidatorID
         ].lockupBaseReward.sub(lockupBaseRewardShare);
-        return penalty;
+        return cappedPenalty;
     }
 
     function unlockStake(uint256 toValidatorID, uint256 amount)
@@ -3155,10 +3323,10 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     uint256 private _reentrancyGuardCounter;
 
     modifier nonReentrant() {
-        // Require exactly 1 (not just != 2): blocks both reentrant calls (counter == 2)
-        // AND calls before initialize() (counter == 0, since Solidity defaults to zero).
-        // The pre-init window between proxy deployment and initialize() would otherwise
-        // allow any nonReentrant function to execute with uninitialized state.
+        // Standard reentrancy guard: counter must be exactly 1 (initialized, not currently entered).
+        // initialize() sets _reentrancyGuardCounter = 1 on deployment.
+        // A proxy upgrade that resets storage must re-run initialize() or explicitly set
+        // _reentrancyGuardCounter = 1 before any guarded function is callable.
         require(_reentrancyGuardCounter == 1, "ReentrancyGuard: reentrant call");
         _reentrancyGuardCounter = 2;
         _;
