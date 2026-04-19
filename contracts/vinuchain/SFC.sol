@@ -3308,9 +3308,11 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     // Track all genesis validators (replaces the single-address _legacyGenesisValidator for new lookups)
     mapping(address => bool) public isGenesisValidator;
     // Inline reentrancy guard (not inherited, to preserve proxy storage layout).
-    // Uses the standard OpenZeppelin pattern: 1 = not entered, 2 = entered.
-    // Initialized to 1 in initialize(). Blocks reentrant calls upfront (before
-    // function body executes) rather than allowing execution and reverting afterward.
+    // States: 0 = never-written (pre-patch default), 1 = initialized/not entered, 2 = entered.
+    // Both 0 and 1 are accepted as "not entered" so the guard works on contracts that
+    // were genesis-deployed before this slot existed and later received the bytecode
+    // via the evmwriter precompile (SfcV2Patch / SfcV2Patch2) — `initialize()` is
+    // `initializer`-gated and cannot re-run to populate the slot post-patch.
     // UPGRADE RISK: if a future upgrade inherits OZ ReentrancyGuard, it inserts its
     // own storage slot at the inherited contract's position in the layout, conflicting
     // with this variable. Always keep the guard inline and document its slot position
@@ -3323,11 +3325,15 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
     uint256 private _reentrancyGuardCounter;
 
     modifier nonReentrant() {
-        // Standard reentrancy guard: counter must be exactly 1 (initialized, not currently entered).
-        // initialize() sets _reentrancyGuardCounter = 1 on deployment.
-        // A proxy upgrade that resets storage must re-run initialize() or explicitly set
-        // _reentrancyGuardCounter = 1 before any guarded function is callable.
-        require(_reentrancyGuardCounter == 1, "ReentrancyGuard: reentrant call");
+        // Counter must be strictly below 2. Legitimate non-entered values are 0 (never
+        // written — this slot didn't exist at genesis; initialize() already consumed
+        // its `initializer` gate and cannot re-run after an evmwriter bytecode patch)
+        // and 1 (explicitly initialized). 2 means "actively entered"; any value above 2
+        // can only come from storage corruption (e.g. a future upgrade inheriting OZ
+        // ReentrancyGuard and colliding with this slot — see UPGRADE RISK above) and
+        // must fail closed. The post-body write normalises 0 → 1, so after the first
+        // successful guarded call every subsequent call sees the standard 1/2 pattern.
+        require(_reentrancyGuardCounter < 2, "ReentrancyGuard: reentrant call");
         _reentrancyGuardCounter = 2;
         _;
         _reentrancyGuardCounter = 1;
