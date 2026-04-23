@@ -3100,11 +3100,20 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
         _stashRewards(delegator, toValidatorID);
 
-        // check lockup duration after _stashRewards, which has erased previous lockup if it has unlocked already
+        // Compare the new absolute end-time against the existing end-time,
+        // NOT the new duration against the old duration. Elapsed time must
+        // count: a 340-day lock with 40 days remaining may be relocked for
+        // 50 days, because the new end-time is still later than the current
+        // one. Comparing durations would wrongly reject that relock.
+        //
+        // After _stashRewards, expired lockups are deleted, so `ld.endTime`
+        // is 0 for first-time locks and just-expired relocks — the check
+        // passes trivially in those cases. The `lockupDuration <=
+        // maxLockupDuration()` require above still caps the new lock.
         LockedDelegation storage ld = getLockupInfo[delegator][toValidatorID];
         require(
-            lockupDuration >= ld.duration,
-            "lockup duration cannot decrease"
+            endTime >= ld.endTime,
+            "lock end-time cannot decrease"
         );
 
         ld.lockedStake = ld.lockedStake.add(amount);
