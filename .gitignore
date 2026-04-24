@@ -21,6 +21,7 @@ yarn-error.log*
 
 # Claude Code settings
 .claude/
+.omc/
 CLAUDE.md
 
 # Gradle
