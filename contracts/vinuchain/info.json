@@ -1,7 +1,7 @@
 {
   "name": "VinuChain",
   "website": "https://vinuchain.com",
-  "description": "VinuChain core protocol contracts including the Special Fee Contract (SFC) for staking and validator management",
+  "description": "VinuChain core protocol contracts — Special Fee Contract (SFC) for validator staking, NodeDriver/NodeDriverAuth governance, and the upgradeable Quota proxy backing the protocol's fee-refund (payback) system",
   "contact": "hello@vinuchain.com",
   "security": "hello@vinuchain.com",
   "contracts": [
@@ -22,6 +22,12 @@
       "address": "0xd100A01E00000000000000000000000000000000",
       "type": "system",
       "description": "EVM-facing relay contract between NodeDriverAuth and the EvmWriter precompile — emits canonical events for validator weight/pubkey changes, network rule updates, and epoch advances"
+    },
+    {
+      "name": "QuotaContract",
+      "address": "0x9D6Aa03a8D4AcF7b43c562f349Ee45b3214c3bbF",
+      "type": "staking",
+      "description": "Upgradeable payback proxy — manages per-address stake, hold-time-locked withdrawals, and fee-refund parameters; queried by the node to compute fee refunds when the Podgorica upgrade is active"
     }
   ],
   "social": {
