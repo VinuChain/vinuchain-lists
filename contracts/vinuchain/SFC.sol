@@ -423,6 +423,12 @@ contract NodeDriverAuth is Initializable, Ownable {
         external
         onlySFC
     {
+        // Defence-in-depth: SFC._syncValidator relays already-stored bytes,
+        // but a future SFC upgrade or test path could land an unvalidated
+        // pubkey here. Reject anything that is not the lachesis-base wire
+        // format (0xc0-prefixed, 66 bytes total).
+        require(pubkey.length == 66, "invalid pubkey length");
+        require(pubkey[0] == 0xc0, "invalid pubkey type");
         driver.updateValidatorPubkey(validatorID, pubkey);
     }
 
@@ -1413,7 +1419,13 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
 
     function createValidator(bytes calldata pubkey) external payable nonReentrant {
         require(msg.value >= minSelfStake(), "insufficient self-stake");
-        require(pubkey.length == 33 || pubkey.length == 65, "invalid pubkey length");
+        // Lachesis-base pubkey wire format is [type(1) || raw(N)] with
+        // type=0xc0 (Secp256k1) and raw being a 65-byte uncompressed
+        // secp256k1 point (0x04 || X(32) || Y(32)). A pubkey missing the
+        // 0xc0 type-byte makes the validator unverifiable on the consensus
+        // layer (zero uptime, zero rewards, stuck delegations).
+        require(pubkey.length == 66, "invalid pubkey length");
+        require(pubkey[0] == 0xc0, "invalid pubkey type");
         _createValidator(msg.sender, pubkey);
         _delegate(msg.sender, lastValidatorID, msg.value);
     }
@@ -1444,7 +1456,11 @@ contract SFC is Initializable, Ownable, StakersConstants, Version {
         uint256 deactivatedTime
     ) internal {
         require(auth != address(0), "auth cannot be zero address");
-        require(pubkey.length == 33 || pubkey.length == 65, "invalid pubkey length");
+        // See createValidator() for the lachesis-base pubkey format
+        // contract. Centralised here so setGenesisValidator() inherits the
+        // same rule via _rawCreateValidator.
+        require(pubkey.length == 66, "invalid pubkey length");
+        require(pubkey[0] == 0xc0, "invalid pubkey type");
         require(getValidatorID[auth] == 0, "validator already exists");
         require(getValidator[validatorID].createdTime == 0, "validator ID already used");
         bytes32 pkHash = keccak256(pubkey);
